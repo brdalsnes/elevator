@@ -1,6 +1,6 @@
-program_EXECUTABLE := process
+program_EXECUTABLE := elevator
 
-#CXX = clang++-3.6
+CXX = clang++-3.6
 
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 current_dir := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
@@ -16,7 +16,7 @@ program_OBJS := $(program_C_OBJS)
 program_OBJS += $(program_CXX_OBJS)
 
 
-program_LIBRARY_DIRS := $(current_dir) $(current_dir)/headers/ $(current_path)/headers/
+program_LIBRARY_DIRS := $(current_dir) $(current_dir)/headers/  
 program_LIBRARIES := comedi m pthread
 
 CXXFLAGS += -Wall -g -std=c++11
@@ -45,4 +45,4 @@ clean:
 
 distclean: clean
 
-.PHONY: all cleane
+.PHONY: all clean

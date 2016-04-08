@@ -1,32 +1,40 @@
 
 #include <stdio.h>
-
+#include <thread>
 #include "elev.h"
-#include "matrix.h"
+#include "Elevator.h"
+#include "OrderManager.h"
 
+OrderManager orderManager(1);
+
+void stop(){
+	if (elev_get_stop_signal()) {
+            elev_set_motor_direction(DIRN_STOP);
+        }
+}
+
+void drive(){
+	while(true){
+		orderManager.scanOrders();
+	}
+}
+
+void listen(){
+	while(true){
+		stop();
+		orderManager.run();
+	}
+}
 
 
 int main() {
     elev_init();
-    printf("%s\n", "Successful init!\n");
-    initMat();
+    printf("PROGRAM STARTED");
 
-    while (1) {
+    std::thread t1(drive);
+    std::thread t2(listen);
 
-        // Stop elevator and exit program if the stop button is pressed
-        if (elev_get_stop_signal()) {
-            elev_set_motor_direction(DIRN_STOP);
-            return 0;
-        }
-
-        listen();
-        lamp();
-        setQue();
-        driveToFloor();
-
-
-    }
-
-    
+    t1.join();
+    t2.join();
 
 }

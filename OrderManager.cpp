@@ -1,11 +1,11 @@
 #include "OrderManager.h"
-#include "Elevator.h"
 #include "elev.h"
 #include "channels.h"
 #include "io.h"
 #include <stdlib.h>
 #include <stdbool.h>
 #include <iostream>
+#include <unistd.h>
 #include <deque>
 
 using namespace std;
@@ -50,8 +50,9 @@ void OrderManager::scanOrders(){
 	while(elev_get_floor_sensor_signal() != destionationFloor){
 		//destionationFloor = getNextOrder();
 
-        if(elev_get_floor_sensor_signal() != -1){
-            elev_set_floor_indicator(elev_get_floor_sensor_signal());
+		int tempFloor = elev_get_floor_sensor_signal();
+        if(tempFloor != -1){
+            elev_set_floor_indicator(tempFloor);
         }
 
         if(startFloor < destionationFloor){
@@ -61,17 +62,15 @@ void OrderManager::scanOrders(){
             elev_set_motor_direction(DIRN_DOWN);
         }
     }
-    if(elev_get_floor_sensor_signal() != -1){
-    	elev_set_motor_direction(DIRN_STOP);
-    	elev_set_floor_indicator(destionationFloor);
-	}
+
+    stopAtFloor(destionationFloor);
 	
     currentFloor[0] = destionationFloor;
 }
 
-bool OrderManager::notInQue(int floor){
+bool OrderManager::notInQue(int floorCheck){
 	for(int i = 0; i < orders[0].size(); i++){
-		if(orders[0][i] == floor){
+		if(orders[0][i] == floorCheck){
 			return false;
 		}
 	}
@@ -89,6 +88,10 @@ int OrderManager::getNextOrder(){
 	}
 }
 
-
-
-
+void OrderManager::stopAtFloor(int destionationFloor){
+	elev_set_motor_direction(DIRN_STOP);
+    elev_set_floor_indicator(destionationFloor);
+    elev_set_door_open_lamp(1);
+    sleep(3);
+    elev_set_door_open_lamp(0);
+}

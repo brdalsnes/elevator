@@ -3,8 +3,10 @@
 #include <thread>
 #include "elev.h"
 #include "OrderManager.h"
+#include "Elevator.h"
 
 OrderManager orderManager(1);
+Elevator elevator;
 
 void listen(){
 	while(true){
@@ -14,7 +16,7 @@ void listen(){
 
 void drive(){
 	while(true){
-		orderManager.scanOrders();
+		orderManager.manage();
 	}
 }
 
@@ -27,5 +29,4 @@ int main() {
 
     t1.join();
     t2.join();
-
 }

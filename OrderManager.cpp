@@ -38,8 +38,8 @@ void OrderManager::run(){
 }
 
 void OrderManager::manage(){
-	printf("Next: %i\n", nextOrder);
-	elevators[0].driveToFloor(nextOrder); //Temporerally
+	elevators[0].addOrder(nextOrder);
+	elevators[0].run(); //Temporerally
 }
 
 void OrderManager::addElevators(int nElevators){

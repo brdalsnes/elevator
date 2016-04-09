@@ -16,9 +16,11 @@ class Elevator{
 
 	public:
 		Elevator();
-		void driveToFloor(int);
-		void stopAtFloor(int);
+		void run();
+		void driveToFloor();
+		void stopAtFloor();
 		int getNextOrder();
+		void addOrder(int);
 		void toRun();
 		void toIdle();
 		void toOpen();

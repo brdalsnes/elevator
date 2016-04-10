@@ -18,7 +18,6 @@ public:
 	OrderManager(int);
 	void run();
 	void manage();
-	void findNextOrder();
 	void addElevators(int);
-	void clearOrders(int);
+	inline const char* toString(state);
 };

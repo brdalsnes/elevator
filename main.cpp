@@ -6,7 +6,6 @@
 #include "Elevator.h"
 
 OrderManager orderManager(1);
-Elevator elevator;
 
 void listen(){
 	while(true){

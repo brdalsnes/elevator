@@ -31,14 +31,21 @@ void OrderManager::run(){
 				buttonMatrix[i][j] = 1;
 			}
 			//Set lights
-			elev_set_button_lamp((elev_button_type_t)j, i, buttonMatrix[i][j]);	
+			elev_set_button_lamp((elev_button_type_t)j, i, buttonMatrix[i][j]);
+
+			//Add and clear
+			if(buttonMatrix[i][j]){
+				elevators[0].addOrder(i, (elev_button_type_t)j);
+				//printf("%s\n", toString(elevators[0].getCurrentState()));
+				if(elevators[0].getCurrentState() == OPEN){
+					buttonMatrix[elev_get_floor_sensor_signal()][j] = 0;
+				}
+			}
 		}
 	}
-	findNextOrder();
-}
+} 
 
 void OrderManager::manage(){
-	elevators[0].addOrder(nextOrder);
 	elevators[0].run(); //Temporerally
 }
 
@@ -49,19 +56,12 @@ void OrderManager::addElevators(int nElevators){
 	}
 }
 
-void OrderManager::findNextOrder(){
-	for(int i = 0; i < N_FLOORS; i++){
-		for(int j = 0; j < N_BUTTONS; j++){
-			if(buttonMatrix[i][j]){
-				nextOrder = i;
-				clearOrders(i);
-			}
-		}
-	}
-}
-
-void OrderManager::clearOrders(int i){
-	for(int k = 0; k < N_BUTTONS; k++){
-		buttonMatrix[i][k] = 0;
+inline const char* OrderManager::toString(state s){
+	switch(s){
+		case RUN: return "RUN";
+		case IDLE: return "IDLE";
+		case OPEN: return "OPEN";
+		case EMERGENCY: return "EMERGENCY";
+		default: return "Unknown";
 	}
 }

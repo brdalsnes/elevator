@@ -226,6 +226,10 @@ state Elevator::getCurrentState(){
 	return currentState;
 }
 
+int Elevator::getCurrentFloor(){
+	return currentFloor;
+}
+
 bool Elevator::notInQue(int newOrder, deque<int> que){
 	for(int i = 0; i < que.size(); i++){
 		if(que[i] == newOrder){

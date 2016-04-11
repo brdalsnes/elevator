@@ -25,6 +25,7 @@ class Elevator{
 		void stopAtFloor();
 		int getNextOrder();
 		state getCurrentState();
+		int getCurrentFloor();
 		void addOrder(int, elev_button_type_t);
 		bool notInQue(int, std::deque<int>);
 		void extendOrders(std::deque<int>);

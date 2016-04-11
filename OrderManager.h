@@ -5,6 +5,7 @@
 #include "elev.h"
 #include "Elevator.h"
 
+enum State{MASTER, SLAVE};
 
 class OrderManager{
 private:
@@ -18,6 +19,7 @@ public:
 	OrderManager(int);
 	void run();
 	void manage();
+	void backUp();
 	void addElevators(int);
 	inline const char* toString(state);
 };

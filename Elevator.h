@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <deque>
+#include <string>
 #include "elev.h"
 #include "OrderManager.h"
 
@@ -27,10 +28,13 @@ class Elevator{
 		void addOrder(int, elev_button_type_t);
 		bool notInQue(int, std::deque<int>);
 		void extendOrders(std::deque<int>);
+		void setDirectionState();
+		void sortOrders();
+		int getDirectionIndex();
 		void toRun();
 		void toIdle();
 		void toOpen();
 		void toEmergency();
-		void printOrders();
+		void printOrders(std::string, std::deque<int>);
 		inline const char* toString(dir_state);
 };

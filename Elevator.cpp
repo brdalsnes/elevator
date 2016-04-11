@@ -10,6 +10,8 @@
 #include <deque>
 #include <algorithm>
 
+using namespace std;
+
 Elevator::Elevator(){
 	currentState = RUN;
 	direction = UP;
@@ -17,6 +19,7 @@ Elevator::Elevator(){
 }
 
 void Elevator::run(){
+	//Elevator state
 	switch(currentState){
 		case RUN:
 			if(elev_get_stop_signal()){
@@ -81,8 +84,7 @@ void Elevator::toIdle(){
 			break;
 
 		case IDLE:
-			extendOrders(ordersOnHoldUp);
-			extendOrders(ordersOnHoldDown);
+			setDirectionState();
 			break;
 
 		case OPEN:
@@ -100,6 +102,7 @@ void Elevator::toOpen(){
 	switch(currentState){
 		case RUN:
 			stopAtFloor();
+			setDirectionState();
 			break;
 
 		case IDLE:
@@ -145,6 +148,7 @@ bool Elevator::driveToFloor(){
 
 	while(elev_get_floor_sensor_signal() != destionationFloor){
 		destionationFloor = getNextOrder();
+		sortOrders();
 
 		int tempFloor = elev_get_floor_sensor_signal();
         if(tempFloor != -1){
@@ -171,8 +175,10 @@ void Elevator::stopAtFloor(){
     elev_set_door_open_lamp(1);
     sleep(2);
     elev_set_door_open_lamp(0);
-    printf("%i\n", currentFloor);
-    printOrders();
+    //printOrders("Orders", orders);
+    //printOrders("UpOrders", ordersOnHoldUp);
+    //printOrders("DownOrders", ordersOnHoldDown);
+    //printf("\n");
 }
 
 void Elevator::addOrder(int newOrder, elev_button_type_t buttonType){
@@ -203,21 +209,6 @@ void Elevator::addOrder(int newOrder, elev_button_type_t buttonType){
 				}
 				break;
 		}
-
-		if(currentFloor == 0 || (!orders.size() && newOrder > currentFloor)){
-			//Enter UP
-			direction = UP;
-			extendOrders(ordersOnHoldUp);
-			ordersOnHoldUp.clear();
-			std::sort(orders.begin(), orders.end());
-		}
-		else if(currentFloor == 3 || (!orders.size() && newOrder < currentFloor)){
-			//Enter DOWN
-			direction = DOWN;
-			extendOrders(ordersOnHoldDown);
-			ordersOnHoldDown.clear();
-			std::sort(orders.rbegin(), orders.rend());
-		}
 	}
 }
 
@@ -235,7 +226,7 @@ state Elevator::getCurrentState(){
 	return currentState;
 }
 
-bool Elevator::notInQue(int newOrder, std::deque<int> que){
+bool Elevator::notInQue(int newOrder, deque<int> que){
 	for(int i = 0; i < que.size(); i++){
 		if(que[i] == newOrder){
 			return false;
@@ -244,7 +235,7 @@ bool Elevator::notInQue(int newOrder, std::deque<int> que){
 	return true;
 }
 
-void Elevator::extendOrders(std::deque<int> ext){
+void Elevator::extendOrders(deque<int> ext){
 	for(int i = 0; i < ext.size(); i++){
 		if(notInQue(ext[i], orders)){
 			orders.push_back(ext[i]);
@@ -252,10 +243,48 @@ void Elevator::extendOrders(std::deque<int> ext){
 	}
 }
 
-void Elevator::printOrders(){
-	printf("[");
-	for(int i = 0; i < orders.size(); i++){
-		printf("%i, ", orders[i]);
+void Elevator::setDirectionState(){
+	if(currentFloor == 0 || (!orders.size() && ordersOnHoldUp.size())){
+		//Enter UP
+		direction = UP;
+		extendOrders(ordersOnHoldUp);
+		ordersOnHoldUp.clear();
+	}
+	else if(currentFloor == 3 || (!orders.size() && ordersOnHoldDown.size())){
+		//Enter DOWN
+		direction = DOWN;
+		extendOrders(ordersOnHoldDown);
+		ordersOnHoldDown.clear();
+	}
+}
+
+void Elevator::sortOrders(){
+	if(direction == UP){
+		sort(orders.begin(), orders.end());
+	}
+	else if(direction == DOWN){
+		sort(orders.rbegin(), orders.rend());
+	}
+}
+
+int Elevator::getDirectionIndex(){
+	switch(direction){
+		case UP:
+			return 0;
+			break;
+		case DOWN:
+			return 1;
+			break;
+		default:
+			return 2;
+			break;
+	}
+}
+
+void Elevator::printOrders(string word, deque<int> que){
+	printf("%s: [", word.c_str());
+	for(int i = 0; i < que.size(); i++){
+		printf("%i, ", que[i]);
 	}
 	printf("]\n");
 }

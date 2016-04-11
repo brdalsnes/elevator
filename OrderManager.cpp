@@ -38,7 +38,10 @@ void OrderManager::run(){
 				elevators[0].addOrder(i, (elev_button_type_t)j);
 				//printf("%s\n", toString(elevators[0].getCurrentState()));
 				if(elevators[0].getCurrentState() == OPEN){
-					buttonMatrix[elev_get_floor_sensor_signal()][j] = 0;
+					int index = elevators[0].getDirectionIndex();
+					int currentFloor = elev_get_floor_sensor_signal();
+					buttonMatrix[currentFloor][index] = 0;
+					buttonMatrix[currentFloor][2] = 0;
 				}
 			}
 		}

@@ -13,55 +13,56 @@
 using namespace std;
 
 Elevator::Elevator(){
-	currentState = RUN;
-	direction = UP;
+	currentState = DOWN;
 	orders.push_back(0);
 }
 
 void Elevator::run(){
 	//Elevator state
 	switch(currentState){
-		case RUN:
-			if(elev_get_stop_signal()){
-				toEmergency();
+		case UP:
+			if(driveToFloor()){ //Sexy
+				toOpen();
 			}
-			else if(driveToFloor()){
+			break;
+
+		case DOWN:
+			if(driveToFloor()){
 				toOpen();
 			}
 			break;
 
 		case IDLE:
-			if(elev_get_stop_signal()){
-				toEmergency();
+			if((getNextOrder() > currentFloor) || ordersOnHoldUp.size()){
+				printf("UP\n");
+				toUp();
 			}
-			else if(orders.size() > 0){
-				toRun();
-			}
-			else{
-				toIdle();
+			else if((getNextOrder() < currentFloor) || ordersOnHoldDown.size()){
+				printf("DOWN\n");
+				toDown();
 			}
 			break;
 
 		case OPEN:
-			if(elev_get_stop_signal()){
-				toEmergency();
-			}
-			else{
-				toIdle();
-			}
-			break;
-
-		case EMERGENCY:
+			toIdle();
 			break;
 	}
 }
 
-void Elevator::toRun(){
+void Elevator::toUp(){
 	switch(currentState){
-		case RUN:
+		case UP:
+			extendOrders(ordersOnHoldUp);
+			toUp();
+			break;
+
+		case DOWN:
+			//Never happens
 			break;
 
 		case IDLE:
+			extendOrders(ordersOnHoldUp);
+			ordersOnHoldUp.clear();
 			break;
 
 		case OPEN:
@@ -69,40 +70,65 @@ void Elevator::toRun(){
 			elev_set_door_open_lamp(0);
 			break;
 
-		case EMERGENCY:
-			driveToFloor();
-			elev_set_stop_lamp(0);
-			break;
 	}
-	currentState = RUN;
+	currentState = UP;
+}
+
+void Elevator::toDown(){
+	switch(currentState){
+		case UP:
+			//Never happens
+			break;
+
+		case DOWN:
+			extendOrders(ordersOnHoldDown);
+			toDown();
+			break;
+
+		case IDLE:
+			extendOrders(ordersOnHoldDown);
+			ordersOnHoldDown.clear();
+			break;
+
+		case OPEN:
+			driveToFloor();
+			elev_set_door_open_lamp(0);
+			break;
+
+	}
+	currentState = DOWN;
 }
 
 void Elevator::toIdle(){
 	switch(currentState){
-		case RUN:
-			elev_set_motor_direction(DIRN_STOP);
+		case UP:
+			break;
+
+		case DOWN:
 			break;
 
 		case IDLE:
-			setDirectionState();
+			toIdle();
 			break;
 
 		case OPEN:
 			elev_set_door_open_lamp(0);
 			break;
 
-		case EMERGENCY:
-			elev_set_stop_lamp(0);
-			break;
 	}
 	currentState = IDLE;
 }
 
 void Elevator::toOpen(){
 	switch(currentState){
-		case RUN:
+		case UP:
+			lastState = UP;
 			stopAtFloor();
-			setDirectionState();
+			break;
+
+		case DOWN:
+			lastState = DOWN;
+			stopAtFloor();
 			break;
 
 		case IDLE:
@@ -112,34 +138,8 @@ void Elevator::toOpen(){
 		case OPEN:
 			//
 			break;
-
-		case EMERGENCY:
-			elev_set_door_open_lamp(1);
-			elev_set_stop_lamp(0);
-			break;
 	}
 	currentState = OPEN;
-}
-
-void Elevator::toEmergency(){
-	switch(currentState){
-		case RUN:
-			elev_set_motor_direction(DIRN_STOP);
-			elev_set_stop_lamp(1);
-			break;
-
-		case IDLE:
-			elev_set_stop_lamp(1);
-			break;
-
-		case OPEN:
-			elev_set_stop_lamp(1);
-			break;
-
-		case EMERGENCY:
-			break;
-	}
-	currentState = EMERGENCY;
 }
 
 bool Elevator::driveToFloor(){
@@ -147,8 +147,7 @@ bool Elevator::driveToFloor(){
 	int startFloor = elev_get_floor_sensor_signal();
 
 	while(elev_get_floor_sensor_signal() != destionationFloor){
-		destionationFloor = getNextOrder();
-		sortOrders();
+		destionationFloor = getNextOrder(); //Update floor
 
 		int tempFloor = elev_get_floor_sensor_signal();
         if(tempFloor != -1){
@@ -175,10 +174,10 @@ void Elevator::stopAtFloor(){
     elev_set_door_open_lamp(1);
     sleep(2);
     elev_set_door_open_lamp(0);
-    //printOrders("Orders", orders);
-    //printOrders("UpOrders", ordersOnHoldUp);
-    //printOrders("DownOrders", ordersOnHoldDown);
-    //printf("\n");
+    printOrders("Orders", orders);
+    printOrders("UpOrders", ordersOnHoldUp);
+    printOrders("DownOrders", ordersOnHoldDown);
+    printf("\n");
 }
 
 void Elevator::addOrder(int newOrder, elev_button_type_t buttonType){
@@ -186,7 +185,7 @@ void Elevator::addOrder(int newOrder, elev_button_type_t buttonType){
 	if(newOrder != elev_get_floor_sensor_signal()){
 		switch(buttonType){
 			case BUTTON_CALL_UP:
-				if(notInQue(newOrder, ordersOnHoldUp) && direction != UP){
+				if(getNextOrder() < newOrder){
 					ordersOnHoldUp.push_back(newOrder);
 				}
 				else if(notInQue(newOrder, orders) && notInQue(newOrder, ordersOnHoldUp)){
@@ -195,7 +194,7 @@ void Elevator::addOrder(int newOrder, elev_button_type_t buttonType){
 				break;
 
 			case BUTTON_CALL_DOWN:
-				if(notInQue(newOrder, ordersOnHoldDown) && direction != DOWN){
+				if(getNextOrder() > newOrder){
 					ordersOnHoldDown.push_back(newOrder);
 				}
 				else if(notInQue(newOrder, orders) && notInQue(newOrder, ordersOnHoldDown)){
@@ -247,32 +246,17 @@ void Elevator::extendOrders(deque<int> ext){
 	}
 }
 
-void Elevator::setDirectionState(){
-	if(currentFloor == 0 || (!orders.size() && ordersOnHoldUp.size())){
-		//Enter UP
-		direction = UP;
-		extendOrders(ordersOnHoldUp);
-		ordersOnHoldUp.clear();
-	}
-	else if(currentFloor == 3 || (!orders.size() && ordersOnHoldDown.size())){
-		//Enter DOWN
-		direction = DOWN;
-		extendOrders(ordersOnHoldDown);
-		ordersOnHoldDown.clear();
-	}
-}
-
 void Elevator::sortOrders(){
-	if(direction == UP){
-		sort(orders.begin(), orders.end());
+	if(currentState == UP){
+		sort(orders.begin(), orders.end()); //Sort acending
 	}
-	else if(direction == DOWN){
-		sort(orders.rbegin(), orders.rend());
+	else if(currentState == DOWN){
+		sort(orders.rbegin(), orders.rend()); //Sort decending
 	}
 }
 
 int Elevator::getDirectionIndex(){
-	switch(direction){
+	switch(lastState){
 		case UP:
 			return 0;
 			break;
@@ -291,12 +275,4 @@ void Elevator::printOrders(string word, deque<int> que){
 		printf("%i, ", que[i]);
 	}
 	printf("]\n");
-}
-
-inline const char* Elevator::toString(dir_state s){
-	switch(s){
-		case UP: return "UP";
-		case DOWN: return "DOWN";
-		default: return "Unknown";
-	}
 }

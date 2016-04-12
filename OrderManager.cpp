@@ -40,6 +40,7 @@ void OrderManager::addElevators(int nElevators){
 }
 
 void OrderManager::run(){
+    printf("%s\n", toString(elevators[0].getCurrentState()));
 	for(int i = 0; i < N_FLOORS; i++){
 		for(int j = 0; j < N_BUTTONS; j++){
 			//Listen for orders
@@ -52,6 +53,7 @@ void OrderManager::run(){
 			//Add and clear
 			if(buttonMatrix[i][j]){
 				elevators[0].addOrder(i, (elev_button_type_t)j);
+                elevators[0].sortOrders();
 				//printf("%s\n", toString(elevators[0].getCurrentState()));
 				if(elevators[0].getCurrentState() == OPEN){
 					int index = elevators[0].getDirectionIndex();
@@ -138,10 +140,10 @@ void OrderManager::backUp(){
 
 inline const char* OrderManager::toString(state s){
 	switch(s){
-		case RUN: return "RUN";
+		case UP: return "UP";
+    case DOWN: return "DOWN";
 		case IDLE: return "IDLE";
 		case OPEN: return "OPEN";
-		case EMERGENCY: return "EMERGENCY";
 		default: return "Unknown";
 	}
 }

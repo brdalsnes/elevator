@@ -6,8 +6,7 @@
 #include "elev.h"
 #include "OrderManager.h"
 
-typedef enum { RUN, IDLE, OPEN, EMERGENCY }state;
-typedef enum { UP, DOWN }dir_state;
+typedef enum { UP, DOWN, IDLE, OPEN}state;
 
 class Elevator{
 	private:
@@ -15,7 +14,7 @@ class Elevator{
 		std::deque<int> ordersOnHoldUp;
 		std::deque<int> ordersOnHoldDown;
 		state currentState;
-		dir_state direction;
+		state lastState;
 		int currentFloor;
 
 	public:
@@ -32,10 +31,9 @@ class Elevator{
 		void setDirectionState();
 		void sortOrders();
 		int getDirectionIndex();
-		void toRun();
+		void toUp();
+		void toDown();
 		void toIdle();
 		void toOpen();
-		void toEmergency();
 		void printOrders(std::string, std::deque<int>);
-		inline const char* toString(dir_state);
 };

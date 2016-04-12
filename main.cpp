@@ -19,19 +19,13 @@ void drive(){
 	}
 }
 
-void backUp(){
-	orderManager.backUp();
-}
-
 int main() {
 	elev_init();
-	printf("PROGRAM STARTED");
+	printf("PROGRAM STARTED\n");
 
     std::thread t1(listen);
     std::thread t2(drive);
-    std::thread t3(backUp);
 
     t1.join();
     t2.join();
-    t3.join();
 }

@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <deque>
+#include <string>
 #include "elev.h"
 #include "Elevator.h"
 
@@ -14,8 +15,11 @@ private:
 
 public:
 	unsigned int buttonMatrix[4][3];
+	unsigned int buffer[4][3];
 	int nextOrder;
-
+	std::string msg;
+	void code();
+	void decode();
 	OrderManager(int);
 	void run();
 	void manage();

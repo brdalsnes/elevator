@@ -34,11 +34,11 @@ void Elevator::run(){
 
 		case IDLE:
 			if((getNextOrder() > currentFloor) || ordersOnHoldUp.size()){
-				printf("UP\n");
+				//printf("UP\n");
 				toUp();
 			}
 			else if((getNextOrder() < currentFloor) || ordersOnHoldDown.size()){
-				printf("DOWN\n");
+				//printf("DOWN\n");
 				toDown();
 			}
 			break;
@@ -174,9 +174,9 @@ void Elevator::stopAtFloor(){
     elev_set_door_open_lamp(1);
     sleep(2);
     elev_set_door_open_lamp(0);
-    printOrders("Orders", orders);
-    printOrders("UpOrders", ordersOnHoldUp);
-    printOrders("DownOrders", ordersOnHoldDown);
+    //printOrders("Orders", orders);
+    //printOrders("UpOrders", ordersOnHoldUp);
+   // printOrders("DownOrders", ordersOnHoldDown);
     printf("\n");
 }
 

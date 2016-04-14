@@ -21,9 +21,8 @@ public:
 	void code();
 	void decode();
 	OrderManager(int);
-	void run();
+	void listen();
 	void manage();
-	void backUp();
 	void addElevators(int);
 	inline const char* toString(state);
 };

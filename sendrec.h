@@ -11,8 +11,8 @@
 
 #define BUFLEN 512  //Max length of buffer
 #define PORT 20022   //The port on which to listen for incoming data
-#define OURADDRESS "129.241.187.26"
-#define SADDRESS "129.241.187.26"
+#define OURADDRESS "129.241.187.155"
+#define SADDRESS "129.241.187.155"
 
 struct code_message{
 	char * rip;
@@ -23,6 +23,6 @@ struct code_message{
 
 void die(char *);
 
-void* udp_init(int port);
-void* udp_Sender(std::string message, int port);
+void udp_init(int port);
+int udp_Sender(std::string message, int port);
 struct code_message udp_Reciever();

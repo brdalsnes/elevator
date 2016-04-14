@@ -14,7 +14,7 @@ class Elevator{
 		std::deque<int> ordersOnHoldUp;
 		std::deque<int> ordersOnHoldDown;
 		state currentState;
-		state lastState;
+		state direction;
 		int currentFloor;
 
 	public:
@@ -36,4 +36,5 @@ class Elevator{
 		void toIdle();
 		void toOpen();
 		void printOrders(std::string, std::deque<int>);
+		inline const char* toString(state);
 };

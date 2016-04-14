@@ -5,12 +5,13 @@
 #include "OrderManager.h"
 #include "Elevator.h"
 #include "sendrec.h"
-OrderManager orderManager(1);
-//struct code_message packet;
 
-void listen(){
+OrderManager orderManager(1);
+struct code_message packet;
+
+void listenForOrders(){
 	while(true){
-		orderManager.run();
+		orderManager.listen();
 	}
 }
 
@@ -20,9 +21,9 @@ void drive(){
 	}
 }
 
-/*void Sender(){
+void Sender(){
 	while(true){
-		udp_Sender("Hello moskus", 20022);
+		udp_Sender("Hello moskus\n", 20022);
 		usleep(500000);
 	}
 }
@@ -30,15 +31,16 @@ void drive(){
 void Reciever(){
 	while(true){
 		packet = udp_Reciever();
-		printf("Message: %s\n", packet.data);
+		printf("Rec Message: %s\n", packet.data);
 	}
-}*/
+}
 
 int main() {
 	elev_init();
+	udp_init(20020);
 	printf("PROGRAM STARTED\n");
 
-    std::thread t1(listen);
+    std::thread t1(listenForOrders);
     std::thread t2(drive);
     //std::thread t3(Sender);
     //std::thread t4(Reciever);

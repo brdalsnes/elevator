@@ -10,18 +10,19 @@ enum State{MASTER, SLAVE};
 
 class OrderManager{
 private:
-	std::deque<Elevator> elevators;
 	int nElevators;
 
 public:
+	State current_state;
+	std::deque<Elevator> elevators;
 	unsigned int buttonMatrix[4][3];
-	unsigned int buffer[4][3];
 	int nextOrder;
-	std::string msg;
+	std::string smsg;
 	void code();
-	void decode();
+	void decode(std::string);
 	OrderManager(int);
 	void listen();
+	void listen1();
 	void manage();
 	void addElevators(int);
 	inline const char* toString(state);

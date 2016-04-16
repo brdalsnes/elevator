@@ -3,6 +3,7 @@
 #include "elev.h"
 #include "channels.h"
 #include "io.h"
+#include "sendrec.h"
 #include <stdlib.h>
 #include <stdbool.h>
 #include <iostream>
@@ -15,15 +16,22 @@ using namespace std;
 Elevator::Elevator(){
 	currentState = DOWN;
 	direction = DOWN;
+	currentFloor = 0;
 	orders.push_back(0);
+//	code = udp_Reciever();
+
+	for(int i = 0; i < N_BUTTONS; i++){
+		buttonCommand[i] = 0;
+	}
 }
 
 void Elevator::run(){
-	//printf("%s\n", toString(direction));
+	//printOrders("Orders: ", orders);
+	//printf("%s\n", toString(currentState));
 	//Elevator state
 	switch(currentState){
 		case UP:
-			if(driveToFloor()){ //Sexy
+			if(driveToFloor()){
 				toOpen();
 			}
 			break;
@@ -35,18 +43,46 @@ void Elevator::run(){
 			break;
 
 		case IDLE:
-			if((getNextOrder() > currentFloor) || ordersOnHoldUp.size()){
-				//printf("UP\n");
+			if(getNextOrder() > currentFloor){
 				toUp();
 			}
-			else if((getNextOrder() < currentFloor) || ordersOnHoldDown.size()){
-				//printf("DOWN\n");
+			else if(getNextOrder() < currentFloor){
 				toDown();
 			}
+			else if(orders.size() > 0){
+				toOpen();
+			}
+			
+			ordersOnHoldUp.clear();
+			ordersOnHoldDown.clear();
 			break;
 
 		case OPEN:
-			toIdle();
+			if(getNextOrder() > currentFloor){
+				toUp();
+			}
+			else if(getNextOrder() < currentFloor){
+				toDown();
+			}
+			else if((direction == UP) && (isOver(ordersOnHoldUp) || isOver(ordersOnHoldDown))){
+				if(!isOver(ordersOnHoldUp)){orders.push_back(ordersOnHoldDown.front());}
+				toUp();
+			}
+			else if((direction == UP) && isUnder(ordersOnHoldDown)){
+				if(isCurrentFloor(ordersOnHoldDown)){ordersOnHoldDown.pop_front();}
+				toDown();
+			}
+			else if((direction == DOWN) && (isUnder(ordersOnHoldDown) || isUnder(ordersOnHoldUp))){
+				if(!isUnder(ordersOnHoldDown)){orders.push_back(ordersOnHoldUp.front());}
+				toDown();
+			}
+			else if((direction == DOWN) && isOver(ordersOnHoldUp)){
+				if(isCurrentFloor(ordersOnHoldUp)){ordersOnHoldUp.pop_front();}
+				toUp();
+			}	
+			else{
+				toIdle();
+			}
 			break;
 	}
 }
@@ -54,6 +90,7 @@ void Elevator::run(){
 void Elevator::toUp(){
 	switch(currentState){
 		case UP:
+			extendOrdersUp();
 			toUp();
 			break;
 
@@ -62,12 +99,10 @@ void Elevator::toUp(){
 			break;
 
 		case IDLE:
-			extendOrders(ordersOnHoldUp);
-			ordersOnHoldUp.clear();
 			break;
 
 		case OPEN:
-			driveToFloor();
+			extendOrdersUp();
 			elev_set_door_open_lamp(0);
 			break;
 
@@ -83,16 +118,15 @@ void Elevator::toDown(){
 			break;
 
 		case DOWN:
+			extendOrdersDown();
 			toDown();
 			break;
 
 		case IDLE:
-			extendOrders(ordersOnHoldDown);
-			ordersOnHoldDown.clear();
 			break;
 
 		case OPEN:
-			driveToFloor();
+			extendOrdersDown();
 			elev_set_door_open_lamp(0);
 			break;
 
@@ -110,13 +144,11 @@ void Elevator::toIdle(){
 			break;
 
 		case IDLE:
-			toIdle();
 			break;
 
 		case OPEN:
 			elev_set_door_open_lamp(0);
 			break;
-
 	}
 	currentState = IDLE;
 }
@@ -132,7 +164,7 @@ void Elevator::toOpen(){
 			break;
 
 		case IDLE:
-			elev_set_door_open_lamp(1);
+			stopAtFloor();
 			break;
 
 		case OPEN:
@@ -142,13 +174,67 @@ void Elevator::toOpen(){
 	currentState = OPEN;
 }
 
+void Elevator::addOrder(int newOrder, elev_button_type_t buttonType){
+		switch(buttonType){
+
+			case BUTTON_CALL_UP:
+				if(currentState == IDLE && notInQue(newOrder, orders)){
+					orders.push_back(newOrder);
+				}
+				else if(notInQue(newOrder, ordersOnHoldUp) && (notInQue(newOrder, orders) || direction == DOWN)){
+					ordersOnHoldUp.push_back(newOrder);
+					sort(ordersOnHoldUp.begin(), ordersOnHoldUp.end());
+				}
+				break;
+
+			case BUTTON_CALL_DOWN:
+				if(currentState == IDLE && notInQue(newOrder, orders)){
+					orders.push_back(newOrder);
+				}
+				else if(notInQue(newOrder, ordersOnHoldDown) && (notInQue(newOrder, orders) || direction == UP)){
+					ordersOnHoldDown.push_back(newOrder);
+					sort(ordersOnHoldDown.rbegin(), ordersOnHoldDown.rend()); //Decending
+				}
+				break;
+
+			case BUTTON_COMMAND:
+
+				if((currentState == UP) && (newOrder <= currentFloor) && notInQue(newOrder, ordersOnHoldDown)){
+					ordersOnHoldDown.push_back(newOrder);
+					sort(ordersOnHoldDown.rbegin(), ordersOnHoldDown.rend());
+				}
+				else if((currentState == DOWN) && (newOrder >= currentFloor) && notInQue(newOrder, ordersOnHoldUp)){
+					ordersOnHoldUp.push_back(newOrder);
+					sort(ordersOnHoldUp.begin(), ordersOnHoldUp.end());
+				}
+				else if((currentState == UP) && (newOrder > currentFloor) && notInQue(newOrder, orders) && notInQue(newOrder, ordersOnHoldUp) && notInQue(newOrder, ordersOnHoldDown)){
+					orders.push_back(newOrder);
+				}
+				else if((currentState == DOWN) && (newOrder < currentFloor) && notInQue(newOrder, orders) && notInQue(newOrder, ordersOnHoldUp) && notInQue(newOrder, ordersOnHoldDown)){
+					orders.push_back(newOrder);
+				}
+				else if(((currentState == OPEN) || (currentState == IDLE)) && notInQue(newOrder, orders) && notInQue(newOrder, ordersOnHoldUp) && notInQue(newOrder, ordersOnHoldDown)){
+					orders.push_back(newOrder);
+				}
+				
+				break;
+		}
+}
+
 bool Elevator::driveToFloor(){
 	int destionationFloor = getNextOrder();
-	int startFloor = elev_get_floor_sensor_signal();
 
 	while(elev_get_floor_sensor_signal() != destionationFloor){
 		destionationFloor = getNextOrder(); //Update floor
 		sortOrders();
+
+		if(currentState == UP){
+			extendOrdersUp();
+		}
+		else if(currentState == DOWN){
+			//printf("hei\n");
+			extendOrdersDown();
+		}
 
 		int tempFloor = elev_get_floor_sensor_signal();
         if(tempFloor != -1){
@@ -156,70 +242,31 @@ bool Elevator::driveToFloor(){
             currentFloor = tempFloor;
         }
 
-        if(startFloor < destionationFloor){
+        if(currentFloor < destionationFloor){
             elev_set_motor_direction(DIRN_UP);
         }
-        else if(startFloor > destionationFloor){
+        else if(currentFloor > destionationFloor){
             elev_set_motor_direction(DIRN_DOWN);
         }
     }
     elev_set_motor_direction(DIRN_STOP);
-    orders.pop_front();
     
     return true;
 }
 
 void Elevator::stopAtFloor(){
 	currentState = OPEN;
+	currentFloor = elev_get_floor_sensor_signal();
     elev_set_floor_indicator(elev_get_floor_sensor_signal());
     elev_set_door_open_lamp(1);
-    sleep(2);
+    sleep(1);
     elev_set_door_open_lamp(0);
+    orders.pop_front();
+
     printOrders("Orders", orders);
     printOrders("UpOrders", ordersOnHoldUp);
     printOrders("DownOrders", ordersOnHoldDown);
     printf("\n");
-}
-
-void Elevator::addOrder(int newOrder, elev_button_type_t buttonType){
-	if(newOrder != elev_get_floor_sensor_signal()){
-		switch(buttonType){
-
-			case BUTTON_CALL_UP:
-				if((!orders.size() || (direction == UP)) && notInQue(newOrder, orders)){
-					orders.push_back(newOrder);
-				}
-				else if(direction == DOWN){
-					ordersOnHoldUp.push_back(newOrder);
-				}
-				break;
-
-			case BUTTON_CALL_DOWN:
-				if((!orders.size() || (direction == DOWN)) && notInQue(newOrder, orders)){
-					orders.push_back(newOrder);
-				}
-				else if(direction == UP){
-					ordersOnHoldDown.push_back(newOrder);
-				}
-				break;
-
-			case BUTTON_COMMAND:
-				printf("%i\n", newOrder);
-				if(notInQue(newOrder, orders)){
-					orders.push_back(newOrder);
-				}
-				else if((newOrder <= currentFloor) && (direction == DOWN) && notInQue(newOrder, orders)){
-					orders.push_back(newOrder);
-				}
-				else if((newOrder >= currentFloor) && (direction == DOWN) && notInQue(newOrder, ordersOnHoldUp)){
-					ordersOnHoldUp.push_back(newOrder);
-				}
-				else if((newOrder <= currentFloor) && (direction == UP) && notInQue(newOrder, ordersOnHoldDown)){
-					ordersOnHoldDown.push_back(newOrder);
-				}
-				break;
-		}
-	}
 }
 
 int Elevator::getNextOrder(){
@@ -232,8 +279,14 @@ int Elevator::getNextOrder(){
 	}
 }
 
-state Elevator::getCurrentState(){
-	return currentState;
+state Elevator::getState(int index){
+	switch(index){
+		case 0: return UP;
+		case 1: return DOWN;
+		case 2: return IDLE;
+		case 3: return OPEN;
+		default: return IDLE;
+	}
 }
 
 int Elevator::getCurrentFloor(){
@@ -249,12 +302,50 @@ bool Elevator::notInQue(int newOrder, deque<int> que){
 	return true;
 }
 
-void Elevator::extendOrders(deque<int> ext){
-	for(int i = 0; i < ext.size(); i++){
-		if(notInQue(ext[i], orders)){
-			orders.push_back(ext[i]);
+void Elevator::extendOrdersUp(){
+	for(int i = 0; i < ordersOnHoldUp.size(); i++){
+		if(notInQue(ordersOnHoldUp[i], orders) && (ordersOnHoldUp[i] > currentFloor)){
+			orders.push_back(ordersOnHoldUp[i]);
+			ordersOnHoldUp.erase(ordersOnHoldUp.begin() + i);
 		}
 	}
+}
+
+void Elevator::extendOrdersDown(){
+	for(int i = 0; i < ordersOnHoldDown.size(); i++){
+		if(notInQue(ordersOnHoldDown[i], orders) && (ordersOnHoldDown[i] < currentFloor)){
+			orders.push_back(ordersOnHoldDown[i]);
+			ordersOnHoldDown.erase(ordersOnHoldDown.begin() + i);
+		}
+	}
+}
+
+
+bool Elevator::isOver(std::deque<int> que){
+	for(int i = 0; i < que.size(); i++){
+		if(que[i] > currentFloor){
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Elevator::isUnder(std::deque<int> que){
+	for(int i = 0; i < que.size(); i++){
+		if(que[i] < currentFloor){
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Elevator::isCurrentFloor(std::deque<int> que){
+	for(int i = 0; i < que.size(); i++){
+		if(que[i] == currentFloor){
+			return true;
+		}
+	}
+	return false;
 }
 
 void Elevator::sortOrders(){
@@ -267,16 +358,23 @@ void Elevator::sortOrders(){
 }
 
 int Elevator::getDirectionIndex(){
-	switch(direction){
-		case UP:
-			return 0;
-			break;
-		case DOWN:
-			return 1;
-			break;
-		default:
-			return 2;
-			break;
+	if(direction == UP){
+		//Up order
+		return 0;
+	}
+	else if(direction == DOWN){
+		//Down order
+		return 1;
+	}
+	return 2;
+}
+
+int Elevator::getStateIndex(){
+	switch(currentState){
+		case UP: return 0;
+		case DOWN: return 1;
+		case IDLE: return 2;
+		case OPEN: return 3;
 	}
 }
 
